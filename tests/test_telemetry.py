@@ -38,7 +38,7 @@ class _MockAsyncClient:
     instances: ClassVar[list["_MockAsyncClient"]] = []
 
     def __init__(self, *args, **kwargs) -> None:
-        self.closed = False
+        self.is_closed = False
         self.instances.append(self)
 
     async def __aenter__(self):
@@ -52,7 +52,7 @@ class _MockAsyncClient:
         return _Response()
 
     async def aclose(self) -> None:
-        self.closed = True
+        self.is_closed = True
 
 
 def _automation(telemetry_distinct_id: str | None = None) -> Automation:
@@ -169,7 +169,7 @@ async def test_close_telemetry_http_client_allows_clean_restart(monkeypatch):
 
     await telemetry.close_telemetry_http_client()
 
-    assert first_client.closed is True
+    assert first_client.is_closed is True
     second_client = telemetry.get_telemetry_http_client()
     assert second_client is not first_client
 
