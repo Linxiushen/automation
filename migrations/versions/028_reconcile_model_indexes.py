@@ -1,7 +1,7 @@
 """Reconcile ORM index declarations with the deployed schema.
 
-Revision ID: 013
-Revises: 012
+Revision ID: 028
+Revises: 027
 Create Date: 2026-08-04
 """
 
@@ -10,8 +10,8 @@ from collections.abc import Sequence
 from alembic import op
 
 
-revision: str = "013"
-down_revision: str = "012"
+revision: str = "028"
+down_revision: str = "027"
 branch_labels: str | Sequence[str] | None = None
 depends_on: str | Sequence[str] | None = None
 
