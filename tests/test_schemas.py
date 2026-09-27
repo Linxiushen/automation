@@ -83,8 +83,10 @@ class TestCronTriggerValidation:
         monkeypatch.setenv("AUTOMATION_MIN_CRON_INTERVAL_SECONDS", "300")
         clear_config_cache()
 
-        with pytest.raises(ValidationError, match="at least 300 seconds"):
+        with pytest.raises(ValidationError, match="at least 300 seconds") as exc_info:
             CronTrigger(schedule="* * * * *")
+
+        assert exc_info.value.errors()[0]["type"] == "interval_too_short"
 
     def test_accepts_schedule_at_configured_interval(self, monkeypatch):
         monkeypatch.setenv("AUTOMATION_MIN_CRON_INTERVAL_SECONDS", "300")

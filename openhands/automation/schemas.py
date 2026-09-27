@@ -18,6 +18,7 @@ from pydantic import (
     model_validator,
 )
 from pydantic.alias_generators import to_camel
+from pydantic_core import PydanticCustomError
 
 from openhands.automation.constants import MODEL_PROFILE_PATTERN
 from openhands.automation.models import AutomationState
@@ -76,8 +77,10 @@ class CronTrigger(BaseModel):
 
         floor = get_config().service.min_cron_interval_seconds
         if floor > 0 and min_interval_seconds(schedule) < floor:
-            raise ValueError(
-                f"Cron expression must have at least {floor} seconds between fires"
+            raise PydanticCustomError(
+                "interval_too_short",
+                "Cron expression must have at least {floor} seconds between fires",
+                {"floor": floor},
             )
         return schedule
 
