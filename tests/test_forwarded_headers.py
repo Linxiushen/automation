@@ -5,12 +5,15 @@
 https` survives into `request.url.scheme` — without it FastAPI's canonical
 redirects answer with an `http://` `Location` behind the ingress (issue #245).
 
-Two details make the setting easy to break silently, so they are pinned here:
-the exact variable name Uvicorn reads, and the fact that Docker strips the
-quotes around `'*'`. A literal `'*'` — quotes included — is not the wildcard,
-it is an unmatchable host literal, and the middleware would trust nobody.
+Three details make the setting easy to break silently, so they are pinned here.
+The exact variable name Uvicorn reads. The fact that Docker strips the quotes
+around `'*'` — a literal `'*'`, quotes included, is not the wildcard but an
+unmatchable host literal, and the middleware would trust nobody. And the
+container's `CMD`, because Uvicorn consults the environment only when the
+command line leaves `--forwarded-allow-ips` unset and proxy headers enabled.
 """
 
+import json
 import shlex
 from pathlib import Path
 from typing import Any, cast
@@ -48,6 +51,17 @@ def dockerfile_env(name: str) -> str:
     return values[0]
 
 
+def dockerfile_cmd() -> list[str]:
+    """Return the argv Docker runs for the image's `CMD`, in exec form."""
+    lines = [
+        line.removeprefix("CMD ")
+        for line in DOCKERFILE.read_text().splitlines()
+        if line.startswith("CMD ")
+    ]
+    assert len(lines) == 1, f"expected exactly one CMD in {DOCKERFILE}"
+    return json.loads(lines[0])
+
+
 def scheme_seen_by_the_app(trusted_hosts: str) -> str:
     """Report the scheme the app sees for an `X-Forwarded-Proto: https` request.
 
@@ -83,6 +97,21 @@ def test_uvicorn_reads_the_container_environment(
 
     assert config.proxy_headers is True
     assert config.forwarded_allow_ips == "*"
+
+
+def test_the_container_command_leaves_the_environment_in_charge() -> None:
+    """The `CMD` must not settle on the command line what the `ENV` sets.
+
+    `uvicorn` defaults `--forwarded-allow-ips` to `None` and consults
+    `FORWARDED_ALLOW_IPS` only then, so passing the flag — or
+    `--no-proxy-headers` — would override the Dockerfile's value while every
+    other test here still passed.
+    """
+    argv = dockerfile_cmd()
+
+    assert "uvicorn" in argv, f"{argv} does not start a Uvicorn server"
+    assert "--forwarded-allow-ips" not in argv
+    assert "--no-proxy-headers" not in argv
 
 
 def test_forwarded_proto_reaches_the_app_as_the_request_scheme() -> None:
