@@ -34,6 +34,16 @@ DOCKERFILE = REPO_ROOT / "containers" / "Dockerfile"
 INGRESS_PEER = ("10.42.7.3", 54321)
 
 
+def runtime_stage_lines() -> list[str]:
+    """Read the final stage, which Docker builds when no target is specified."""
+    lines: list[str] = []
+    for line in DOCKERFILE.read_text().replace("\\\n", "").splitlines():
+        if line.startswith("FROM "):
+            lines = []
+        lines.append(line)
+    return lines
+
+
 def dockerfile_env(name: str) -> str:
     """Return the value Docker stores for an `ENV <name>=<value>` instruction.
 
@@ -42,7 +52,7 @@ def dockerfile_env(name: str) -> str:
     """
     values = [
         assignment.split("=", 1)[1]
-        for line in DOCKERFILE.read_text().splitlines()
+        for line in runtime_stage_lines()
         if line.startswith("ENV ")
         for assignment in shlex.split(line.removeprefix("ENV "))
         if assignment.split("=", 1)[0] == name
@@ -55,7 +65,7 @@ def dockerfile_cmd() -> list[str]:
     """Return the argv Docker runs for the image's `CMD`, in exec form."""
     lines = [
         line.removeprefix("CMD ")
-        for line in DOCKERFILE.read_text().splitlines()
+        for line in runtime_stage_lines()
         if line.startswith("CMD ")
     ]
     assert len(lines) == 1, f"expected exactly one CMD in {DOCKERFILE}"
